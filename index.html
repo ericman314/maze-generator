@@ -1,0 +1,154 @@
+<html>
+
+<body onload="generateMaze()">
+  <canvas id="canvas" width=642 height=482>
+
+  </canvas>
+  <button id="generateMaze" onclick="generateMaze()">Generate</button>
+
+  <script>
+    function generateMaze() {
+
+      let nRows = 24
+      let nCols = 32
+      let spacing = 20
+      let nGraph = 0
+      let graph = []
+      for (var r = 0; r < nRows; r++) {
+        for (var c = 0; c < nCols; c++) {
+          let cx = (c + 0.5) * spacing + 1
+          let cy = (r + 0.5) * spacing + 1
+          let idx = r * nCols + c
+          // The graph will have 1, 2, 3, or 4 connections.
+          // Each connection includes an index of the connected node, and the coordinates of a wall which prevents travel to that node.
+          // If a connection is established during generation, the wall will not be rendered.
+
+          let connections = []
+
+          // idx: null means that we still need to render a wall, but no node is present on the other side. Usually this means that edge of the maze.
+
+          // Row above
+          connections.push({
+            idx: r > 0 ? idx - nCols : null,
+            x0: cx - spacing / 2,
+            y0: cy - spacing / 2,
+            x1: cx + spacing / 2,
+            y1: cy - spacing / 2,
+            established: false
+          })
+
+          // Row below
+          connections.push({
+            idx: r < nRows - 1 ? idx + nCols : null,
+            x0: cx - spacing / 2,
+            y0: cy + spacing / 2,
+            x1: cx + spacing / 2,
+            y1: cy + spacing / 2,
+            established: false
+          })
+
+          // Column to the left
+          connections.push({
+            idx: c > 0 ? idx - 1 : null,
+            x0: cx - spacing / 2,
+            y0: cy - spacing / 2,
+            x1: cx - spacing / 2,
+            y1: cy + spacing / 2,
+            established: false
+          })
+
+          // Column to the left
+          connections.push({
+            idx: c < nCols - 1 ? idx + 1 : null,
+            x0: cx + spacing / 2,
+            y0: cy - spacing / 2,
+            x1: cx + spacing / 2,
+            y1: cy + spacing / 2,
+            established: false
+          })
+
+          graph[idx] = {
+            visited: false,
+            connections
+          }
+          nGraph++
+        }
+      }
+
+      if (nGraph !== graph.length) {
+        throw new Error("Graph length is not equal to number of nodes inserted!")
+      }
+      // TODO: Depth-first random search to establish connections
+
+      let curIdx = 0
+      let iters = 0
+      let curStack = []
+
+      while (iters < 10000) {
+        iters++
+
+        graph[curIdx].visited = true
+        curStack.push(curIdx)
+
+
+        // Possible connections are those that the connection leads to another node (idx not null) and that the node hasn't been visited already
+        let possibleConnections = graph[curIdx].connections.filter(c => c.idx !== null && !graph[c.idx].visited)
+        if (possibleConnections.length === 0) { 
+          
+          if (curStack.length === 1) {
+            // Retraced steps all the way back
+            break
+          }
+          
+          // Pop the last index off the stack, and continue!
+          curStack.pop()  // The curIdx will be pushed again, so pop twice here
+          curIdx = curStack.pop()
+
+          continue
+         }
+
+        let nextConnIdx = Math.floor(Math.random() * possibleConnections.length)
+        let nextConn = possibleConnections[nextConnIdx]
+        let nextIdx = nextConn.idx
+
+        // Establish connections between curIdx and nextIdx (this will cause the walls not to be rendered)
+        nextConn.established = true
+        // Find the connection that's going in the reverse direction (hopefully there is one... in the future the connections might be refactored so that this isn't necessary)
+        let reverseConnection = graph[nextIdx].connections.filter(c => c.idx === curIdx)
+        if (reverseConnection.length !== 1) {
+          throw new Error('Could not find reverse connection')
+        }
+        reverseConnection = reverseConnection[0]
+        reverseConnection.established = true
+
+        curIdx = nextIdx
+
+      }
+
+      // Render the maze:
+
+      let ctx = document.getElementById('canvas').getContext('2d')
+
+      ctx.fillStyle = 'white'
+      ctx.fillRect(0, 0, 642, 482)
+
+      ctx.beginPath()
+      for (var i = 0; i < graph.length; i++) {
+        for (var j = 0; j < graph[i].connections.length; j++) {
+          let conn = graph[i].connections[j]
+          if (!conn.established) {
+            ctx.moveTo(conn.x0, conn.y0)
+            ctx.lineTo(conn.x1, conn.y1)
+          }
+        }
+      }
+
+      ctx.stroke()
+
+
+
+    }
+  </script>
+</body>
+
+</html>
