@@ -4,87 +4,48 @@
   <canvas id="canvas" width=642 height=482>
 
   </canvas>
+  <br />
+  <select id="selectShape">
+    <option value="Rectangle" selected>Rectangle</option>
+    <option value="Triangle">Triangle</option>
+  </select>
   <button id="generateMaze" onclick="generateMaze()">Generate</button>
 
   <script>
+
+
     function generateMaze() {
 
-      let nRows = 24
-      let nCols = 32
-      let spacing = 20
-      let nGraph = 0
-      let graph = []
-      for (var r = 0; r < nRows; r++) {
-        for (var c = 0; c < nCols; c++) {
-          let cx = (c + 0.5) * spacing + 1
-          let cy = (r + 0.5) * spacing + 1
-          let idx = r * nCols + c
-          // The graph will have 1, 2, 3, or 4 connections.
-          // Each connection includes an index of the connected node, and the coordinates of a wall which prevents travel to that node.
-          // If a connection is established during generation, the wall will not be rendered.
 
-          let connections = []
+      let select = document.getElementById('selectShape')
+      let shape = select.options[select.selectedIndex].value
 
-          // idx: null means that we still need to render a wall, but no node is present on the other side. Usually this means that edge of the maze.
+      let graph
 
-          // Row above
-          connections.push({
-            idx: r > 0 ? idx - nCols : null,
-            x0: cx - spacing / 2,
-            y0: cy - spacing / 2,
-            x1: cx + spacing / 2,
-            y1: cy - spacing / 2,
-            established: false
-          })
+      switch (shape) {
+        case 'Rectangle':
+          graph = getRectangle()
 
-          // Row below
-          connections.push({
-            idx: r < nRows - 1 ? idx + nCols : null,
-            x0: cx - spacing / 2,
-            y0: cy + spacing / 2,
-            x1: cx + spacing / 2,
-            y1: cy + spacing / 2,
-            established: false
-          })
+          break
 
-          // Column to the left
-          connections.push({
-            idx: c > 0 ? idx - 1 : null,
-            x0: cx - spacing / 2,
-            y0: cy - spacing / 2,
-            x1: cx - spacing / 2,
-            y1: cy + spacing / 2,
-            established: false
-          })
+        case 'Triangle':
 
-          // Column to the left
-          connections.push({
-            idx: c < nCols - 1 ? idx + 1 : null,
-            x0: cx + spacing / 2,
-            y0: cy - spacing / 2,
-            x1: cx + spacing / 2,
-            y1: cy + spacing / 2,
-            established: false
-          })
+          graph = getTriangle()
 
-          graph[idx] = {
-            visited: false,
-            connections
-          }
-          nGraph++
-        }
+          break
+        default:
+          throw new Error('Unrecognized shape')
+          break
       }
 
-      if (nGraph !== graph.length) {
-        throw new Error("Graph length is not equal to number of nodes inserted!")
-      }
+
       // TODO: Depth-first random search to establish connections
 
       let curIdx = 0
       let iters = 0
       let curStack = []
 
-      while (iters < 10000) {
+      while (iters < 20000) {
         iters++
 
         graph[curIdx].visited = true
@@ -93,19 +54,19 @@
 
         // Possible connections are those that the connection leads to another node (idx not null) and that the node hasn't been visited already
         let possibleConnections = graph[curIdx].connections.filter(c => c.idx !== null && !graph[c.idx].visited)
-        if (possibleConnections.length === 0) { 
-          
+        if (possibleConnections.length === 0) {
+
           if (curStack.length === 1) {
             // Retraced steps all the way back
             break
           }
-          
+
           // Pop the last index off the stack, and continue!
           curStack.pop()  // The curIdx will be pushed again, so pop twice here
           curIdx = curStack.pop()
 
           continue
-         }
+        }
 
         let nextConnIdx = Math.floor(Math.random() * possibleConnections.length)
         let nextConn = possibleConnections[nextConnIdx]
@@ -147,6 +108,166 @@
 
 
 
+    }
+
+    /*
+
+      0
+     123   Add 2
+    45678  Add 4
+   9ABCDEF Add 6
+
+    
+
+    */
+
+    function getTriangle() {
+      let graph = []
+
+      let nSide = 30
+      let ySpacing = 480 / nSide
+      let xSpacing = ySpacing / Math.sqrt(3) * 2
+      let idx = 0
+      for (var rows = 0; rows < nSide; rows++) {
+        for (var cols = 0; cols < rows * 2 + 1; cols++) {
+          let cx = cols * xSpacing/2 - (rows - nSide) * xSpacing/2 // TODO: add some function of cols
+          let cy = (rows+0.5) * ySpacing
+          
+          let connections = []
+          if (cols % 2 === 0) {
+            // Pointy end up
+
+            // Triangle to left
+            connections.push({
+              idx: cols > 0 ? idx - 1 : null,
+              x0: cx,
+              y0: cy - ySpacing / 2,
+              x1: cx - xSpacing / 2,
+              y1: cy + ySpacing / 2,
+            })
+
+            // Triangle to right
+            connections.push({
+              idx: cols < rows * 2 ? idx + 1 : null,
+              x0: cx,
+              y0: cy - ySpacing / 2,
+              x1: cx + xSpacing / 2,
+              y1: cy + ySpacing / 2,
+            })
+
+            // Triangle below
+            connections.push({
+              idx: rows < nSide - 1 ? idx + (rows+1)*2 : null,
+              x0: cx - xSpacing / 2,
+              y0: cy + ySpacing / 2,
+              x1: cx + xSpacing / 2,
+              y1: cy + ySpacing / 2,
+            })
+
+          } else {
+            // Pointy end down
+
+            // Triangle to left
+            connections.push({
+              idx: cols > 0 ? idx - 1 : null,
+              x0: cx - xSpacing / 2,
+              y0: cy - ySpacing / 2,
+              x1: cx,
+              y1: cy + ySpacing / 2,
+            })
+
+            // Triangle to right
+            connections.push({
+              idx: cols < rows * 2 ? idx + 1 : null,
+              x0: cx + xSpacing / 2,
+              y0: cy - ySpacing / 2,
+              x1: cx,
+              y1: cy + ySpacing / 2,
+            })
+
+            // Triangle above
+            connections.push({
+              idx: idx - rows*2,
+              x0: cx - xSpacing / 2,
+              y0: cy - ySpacing / 2,
+              x1: cx + xSpacing / 2,
+              y1: cy - ySpacing / 2,
+            })
+          }
+
+          graph[idx] = {
+            connections
+          }
+          idx++
+        }
+      }
+
+      console.log(graph)
+      return graph
+    }
+
+    function getRectangle() {
+      let graph = []
+
+      let nRows = 24
+      let nCols = 32
+      let spacing = 20
+      for (var r = 0; r < nRows; r++) {
+        for (var c = 0; c < nCols; c++) {
+          let cx = (c + 0.5) * spacing + 1
+          let cy = (r + 0.5) * spacing + 1
+          let idx = r * nCols + c
+          // The graph will have 1, 2, 3, or 4 connections.
+          // Each connection includes an index of the connected node, and the coordinates of a wall which prevents travel to that node.
+          // If a connection is established during generation, the wall will not be rendered.
+
+
+          // idx: null means that we still need to render a wall, but no node is present on the other side. Usually this means that edge of the maze.
+
+          let connections = []
+          // Row above
+          connections.push({
+            idx: r > 0 ? idx - nCols : null,
+            x0: cx - spacing / 2,
+            y0: cy - spacing / 2,
+            x1: cx + spacing / 2,
+            y1: cy - spacing / 2,
+          })
+
+          // Row below
+          connections.push({
+            idx: r < nRows - 1 ? idx + nCols : null,
+            x0: cx - spacing / 2,
+            y0: cy + spacing / 2,
+            x1: cx + spacing / 2,
+            y1: cy + spacing / 2,
+          })
+
+          // Column to the left
+          connections.push({
+            idx: c > 0 ? idx - 1 : null,
+            x0: cx - spacing / 2,
+            y0: cy - spacing / 2,
+            x1: cx - spacing / 2,
+            y1: cy + spacing / 2,
+          })
+
+          // Column to the left
+          connections.push({
+            idx: c < nCols - 1 ? idx + 1 : null,
+            x0: cx + spacing / 2,
+            y0: cy - spacing / 2,
+            x1: cx + spacing / 2,
+            y1: cy + spacing / 2,
+          })
+
+          graph[idx] = {
+            connections
+          }
+        }
+      }
+
+      return graph
     }
   </script>
 </body>
